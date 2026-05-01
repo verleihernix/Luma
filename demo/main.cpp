@@ -58,6 +58,13 @@ static const std::string& expect_string(const LumaValue& v, std::string_view fn)
     return v.as_string();
 }
 
+static const bool expect_bool(const LumaValue& v, std::string_view fn) {
+    if (!v.is_bool())
+        throw luma_error(fn, "bool", v.to_string());
+
+    return v.as_bool();
+}
+
 static LumaList& expect_list(LumaValue& v, std::string_view fn) {
     if (!v.is_list()) {
         throw luma_error(fn, "list", v.to_string());
@@ -365,8 +372,38 @@ static void register_stdlib(LumaVM* vm) {
             return LumaValue(std::move(content));
         });
 
+    REG_FN("assert",
+        [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+            expect_args(args, 1, "assert");
 
+            const bool is_true = expect_bool(args[0], "assert");
+            if (!is_true)
+                throw std::runtime_error("assertion failed");
 
+            return {};
+        });
+
+    REG_FN("range",
+        [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+            expect_args(args, 2, "range");
+
+            const int start = (int)expect_number(args[0], "range");
+            const int end = (int)expect_number(args[1], "range");
+
+            auto list = std::make_shared<LumaList>();
+
+            if (start <= end) {
+                for (int i = start; i <= end; i++)
+                    list->push_back(LumaValue((double)i));
+            }
+            else {
+                for (int i = start; i >= end; --i) {
+                    list->push_back(LumaValue((double)i));
+                }
+            }
+
+            return LumaValue(list);
+        });
 #undef REG_FN
 }
 
