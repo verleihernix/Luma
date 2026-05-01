@@ -33,22 +33,22 @@ struct LumaValue {
     explicit LumaValue(std::shared_ptr<LumaMap>  v) : data(std::move(v)) {}
     explicit LumaValue(LumaNativeFn v) : data(std::move(v)) {}
 
-    bool is_null()     const { return std::holds_alternative<std::monostate>(data); }
-    bool is_bool()     const { return std::holds_alternative<bool>(data); }
-    bool is_number()   const { return std::holds_alternative<double>(data); }
-    bool is_string()   const { return std::holds_alternative<std::string>(data); }
-    bool is_list()     const { return std::holds_alternative<std::shared_ptr<LumaList>>(data); }
-    bool is_map()      const { return std::holds_alternative<std::shared_ptr<LumaMap>>(data); }
-    bool is_function() const { return std::holds_alternative<LumaNativeFn>(data); }
+    [[nodiscard]]  inline bool is_null()     const { return std::holds_alternative<std::monostate>(data); }
+    [[nodiscard]]  inline bool is_bool()     const { return std::holds_alternative<bool>(data); }
+    [[nodiscard]]  inline bool is_number()   const { return std::holds_alternative<double>(data); }
+    [[nodiscard]]  inline bool is_string()   const { return std::holds_alternative<std::string>(data); }
+    [[nodiscard]]  inline bool is_list()     const { return std::holds_alternative<std::shared_ptr<LumaList>>(data); }
+    [[nodiscard]]  inline bool is_map()      const { return std::holds_alternative<std::shared_ptr<LumaMap>>(data); }
+    [[nodiscard]]  inline bool is_function() const { return std::holds_alternative<LumaNativeFn>(data); }
 
-    bool               as_bool()   const { return std::get<bool>(data); }
-    double             as_number() const { return std::get<double>(data); }
-    const std::string& as_string() const { return std::get<std::string>(data); }
-    std::shared_ptr<LumaList> as_list() const { return std::get<std::shared_ptr<LumaList>>(data); }
-    std::shared_ptr<LumaMap>  as_map()  const { return std::get<std::shared_ptr<LumaMap>>(data); }
-    const LumaNativeFn& as_fn() const { return std::get<LumaNativeFn>(data); }
+    [[nodiscard]] inline bool                      as_bool()   const { return std::get<bool>(data); }
+    [[nodiscard]] inline double                    as_number() const { return std::get<double>(data); }
+    [[nodiscard]] inline const std::string&        as_string() const { return std::get<std::string>(data); }
+    [[nodiscard]] inline std::shared_ptr<LumaList> as_list() const { return std::get<std::shared_ptr<LumaList>>(data); }
+    [[nodiscard]] inline std::shared_ptr<LumaMap>  as_map()  const { return std::get<std::shared_ptr<LumaMap>>(data); }
+    [[nodiscard]] inline const LumaNativeFn&       as_fn() const { return std::get<LumaNativeFn>(data); }
 
-    bool truthy() const {
+    [[nodiscard]] bool truthy() const {
         return std::visit([](const auto& v) -> bool {
             using T = std::decay_t<decltype(v)>;
             if constexpr (std::is_same_v<T, std::monostate>) return false;
