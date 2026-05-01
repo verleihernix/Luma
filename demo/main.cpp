@@ -334,6 +334,39 @@ static void register_stdlib(LumaVM* vm) {
             return {};
         });
 
+    REG_FN("writefile",
+        [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+            expect_args(args, 2, "writefile");
+            const std::string& path = expect_string(args[0], "writefile");
+            const std::string& content = expect_string(args[1], "writefile");
+
+            std::ofstream file(path, std::ios::out | std::ios::trunc);
+
+            if (!file.is_open())
+                throw std::runtime_error("Cannot open file: " + path);
+
+            file << content;
+            return {};
+        });
+
+    REG_FN("readfile",
+        [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+            expect_args(args, 1, "readfile");
+
+            const std::string& path = expect_string(args[0], "readfile");
+
+            std::ifstream file(path, std::ios::in);
+
+            if (!file.is_open())
+                throw std::runtime_error("Cannot open file: " + path);
+
+            std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+            return LumaValue(std::move(content));
+        });
+
+
+
 #undef REG_FN
 }
 
