@@ -31,16 +31,6 @@ static auto bold(std::string_view s) { return col("1", s); }
 static auto dim(std::string_view s) { return col("2", s); }
 
 static void register_stdlib(LumaVM* vm) {
-
-    luma_register_function(vm, "print", [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
-        for (size_t i = 0; i < args.size(); ++i) {
-            if (i) std::cout << ' ';
-            std::cout << args[i].to_string();
-        }
-        std::cout << '\n';
-        return {};
-        });
-
     luma_register_function(vm, "println", [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
         for (size_t i = 0; i < args.size(); ++i) {
             if (i) std::cout << ' ';
@@ -303,7 +293,7 @@ static void run_repl(LumaVM* vm) {
                 std::cout << bold("Available functions (host-registered):\n");
 
                 std::vector<std::string> fns = {
-                    "print","println","eprint","tostring","tonumber","typeof",
+                    "println","eprint","tostring","tonumber","typeof",
                     "len","push","pop","keys","has","assert","error","input",
                     "math_floor","math_ceil","math_round","math_abs","math_sqrt",
                     "math_pow","math_sin","math_cos","math_min","math_max","math_rand",
