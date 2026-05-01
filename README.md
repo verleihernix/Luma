@@ -2,7 +2,7 @@
 
 # Luma
 
-**Luma** is a lightweight, embeddable scripting language written in **C++20**, designed for easy integration into applications and game engines.
+**Luma** is a lightweight, embeddable scripting language written in **C++20**, where the host controls everything.
 
 ---
 
