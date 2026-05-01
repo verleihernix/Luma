@@ -16,8 +16,11 @@
 #include <thread>
 #include <chrono>
 #include <cctype>
+#include <algorithm>
 
 static bool use_color = true;
+
+static std::vector<std::string> registered_functions;
 
 static std::runtime_error luma_error(std::string_view fn, std::string_view msg) {
     return std::runtime_error(std::format("{}: {}", fn, msg));
@@ -82,10 +85,14 @@ static auto bold(std::string_view s) { return col("1", s); }
 static auto dim(std::string_view s) { return col("2", s); }
 
 static void register_stdlib(LumaVM* vm) {
-    luma_register_function(vm, "println",
+    // macro to easily register functions
+#define REG_FN(name, impl) \
+        luma_register_function(vm, name, impl); \
+        registered_functions.push_back(name)
+
+    REG_FN("println",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "println");
-
             for (size_t i = 0; i < args.size(); ++i) {
                 if (i) std::cout << ' ';
                 std::cout << args[i].to_string();
@@ -94,10 +101,9 @@ static void register_stdlib(LumaVM* vm) {
             return {};
         });
 
-    luma_register_function(vm, "eprint",
+    REG_FN("eprint",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "eprint");
-
             for (size_t i = 0; i < args.size(); ++i) {
                 if (i) std::cerr << ' ';
                 std::cerr << args[i].to_string();
@@ -106,57 +112,42 @@ static void register_stdlib(LumaVM* vm) {
             return {};
         });
 
-    luma_register_function(vm, "input",
+    REG_FN("input",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             if (!args.empty())
                 std::cout << args[0].to_string();
-
             std::string line;
             if (!std::getline(std::cin, line))
                 throw std::runtime_error("input: EOF reached");
-
             return LumaValue(line);
         });
 
-    luma_register_function(vm, "tostring",
+    REG_FN("tostring",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "tostring");
             return LumaValue(args[0].to_string());
         });
 
-    luma_register_function(vm, "tonumber",
+    REG_FN("tonumber",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "tonumber");
-
             if (args[0].is_number())
                 return args[0];
-
             if (args[0].is_string()) {
                 try {
                     return LumaValue(std::stod(args[0].as_string()));
                 }
                 catch (...) {
-                    throw luma_error(
-                        "tonumber",
-                        "valid number string",
-                        args[0].as_string()
-                    );
+                    throw luma_error("tonumber", "valid number string", args[0].as_string());
                 }
             }
-
-            throw luma_error(
-                "tonumber",
-                "number or numeric string",
-                args[0].to_string()
-            );
+            throw luma_error("tonumber", "number or numeric string", args[0].to_string());
         });
 
-    luma_register_function(vm, "typeof",
+    REG_FN("typeof",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "typeof");
-
             auto& v = args[0];
-
             if (v.is_null())     return LumaValue("null");
             if (v.is_bool())     return LumaValue("bool");
             if (v.is_number())   return LumaValue("number");
@@ -164,96 +155,85 @@ static void register_stdlib(LumaVM* vm) {
             if (v.is_list())     return LumaValue("list");
             if (v.is_map())      return LumaValue("map");
             if (v.is_function()) return LumaValue("function");
-
             return LumaValue("unknown");
         });
 
-    luma_register_function(vm, "len",
+    REG_FN("len",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "len");
-
             auto& v = args[0];
-
             if (v.is_list())   return LumaValue((double)v.as_list()->size());
             if (v.is_string()) return LumaValue((double)v.as_string().size());
             if (v.is_map())    return LumaValue((double)v.as_map()->size());
-
             throw luma_error("len", "list|string|map", v.to_string());
         });
 
-    luma_register_function(vm, "push",
+    REG_FN("push",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 2, "push");
-
             LumaList& list = expect_list(args[0], "push");
             list.push_back(args[1]);
             return args[0];
         });
 
-    luma_register_function(vm, "pop",
+    REG_FN("pop",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "pop");
-
             LumaList& list = expect_list(args[0], "pop");
             if (list.empty()) return {};
-
             auto v = list.back();
             list.pop_back();
             return v;
         });
 
-    luma_register_function(vm, "keys",
+    REG_FN("keys",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "keys");
-
             LumaMap& m = expect_map(args[0], "keys");
             auto result = std::make_shared<LumaList>();
-
             for (auto& [k, _] : m)
                 result->push_back(LumaValue(k));
-
             return LumaValue(result);
         });
 
-    luma_register_function(vm, "has",
+    REG_FN("has",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 2, "has");
-
             LumaMap& m = expect_map(args[0], "has");
             return LumaValue(m.contains(args[1].to_string()));
         });
 
-    luma_register_function(vm, "math_floor",
+    REG_FN("math_floor",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_floor");
             return LumaValue(std::floor(expect_number(a[0], "math_floor")));
         });
 
-    luma_register_function(vm, "math_ceil",
+    REG_FN("math_ceil",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_ceil");
             return LumaValue(std::ceil(expect_number(a[0], "math_ceil")));
         });
 
-    luma_register_function(vm, "math_round",
+    REG_FN("math_round",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_round");
             return LumaValue(std::round(expect_number(a[0], "math_round")));
         });
 
-    luma_register_function(vm, "math_abs",
+    REG_FN("math_abs",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_abs");
             return LumaValue(std::abs(expect_number(a[0], "math_abs")));
         });
 
-    luma_register_function(vm, "math_sqrt",
+    REG_FN("math_sqrt",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_sqrt");
             return LumaValue(std::sqrt(expect_number(a[0], "math_sqrt")));
         });
 
-    luma_register_function(vm, "math_pow",
+    REG_FN("math_pow",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "math_pow");
             return LumaValue(std::pow(
@@ -262,19 +242,19 @@ static void register_stdlib(LumaVM* vm) {
             ));
         });
 
-    luma_register_function(vm, "math_sin",
+    REG_FN("math_sin",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_sin");
             return LumaValue(std::sin(expect_number(a[0], "math_sin")));
         });
 
-    luma_register_function(vm, "math_cos",
+    REG_FN("math_cos",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "math_cos");
             return LumaValue(std::cos(expect_number(a[0], "math_cos")));
         });
 
-    luma_register_function(vm, "math_min",
+    REG_FN("math_min",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "math_min");
             return LumaValue(std::min(
@@ -283,7 +263,7 @@ static void register_stdlib(LumaVM* vm) {
             ));
         });
 
-    luma_register_function(vm, "math_max",
+    REG_FN("math_max",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "math_max");
             return LumaValue(std::max(
@@ -292,12 +272,12 @@ static void register_stdlib(LumaVM* vm) {
             ));
         });
 
-    luma_register_function(vm, "math_rand",
+    REG_FN("math_rand",
         [](LumaVM*, std::span<LumaValue>) -> LumaValue {
             return LumaValue((double)std::rand() / RAND_MAX);
         });
 
-    luma_register_function(vm, "str_upper",
+    REG_FN("str_upper",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "str_upper");
             auto s = expect_string(a[0], "str_upper");
@@ -305,7 +285,7 @@ static void register_stdlib(LumaVM* vm) {
             return LumaValue(s);
         });
 
-    luma_register_function(vm, "str_lower",
+    REG_FN("str_lower",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 1, "str_lower");
             auto s = expect_string(a[0], "str_lower");
@@ -313,21 +293,18 @@ static void register_stdlib(LumaVM* vm) {
             return LumaValue(s);
         });
 
-    luma_register_function(vm, "str_sub",
+    REG_FN("str_sub",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "str_sub");
-
             auto& s = expect_string(a[0], "str_sub");
             size_t start = (size_t)expect_number(a[1], "str_sub");
-
             size_t len = std::string::npos;
             if (a.size() >= 3)
                 len = (size_t)expect_number(a[2], "str_sub");
-
             return LumaValue(s.substr(start, len));
         });
 
-    luma_register_function(vm, "str_contains",
+    REG_FN("str_contains",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "str_contains");
             return LumaValue(
@@ -335,28 +312,28 @@ static void register_stdlib(LumaVM* vm) {
             );
         });
 
-    luma_register_function(vm, "str_starts",
+    REG_FN("str_starts",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "str_starts");
             return LumaValue(a[0].as_string().starts_with(a[1].as_string()));
         });
 
-    luma_register_function(vm, "str_ends",
+    REG_FN("str_ends",
         [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
             expect_args(a, 2, "str_ends");
             return LumaValue(a[0].as_string().ends_with(a[1].as_string()));
         });
 
-    luma_register_function(vm, "wait",
+    REG_FN("wait",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "wait");
-
             int ms = (int)expect_number(args[0], "wait");
             if (ms < 0) ms = 0;
-
             std::this_thread::sleep_for(std::chrono::milliseconds(ms));
             return {};
         });
+
+#undef REG_FN
 }
 
 static void print_error(std::string_view err) {
@@ -387,7 +364,7 @@ static bool is_incomplete(std::string_view src) {
 
 static void run_repl(LumaVM* vm) {
     std::cout << bold(cyan("Luma"))
-        << dim(" v0.1 - :help for help, :quit to exit\n");
+        << dim(":help for help, :quit to exit\n");
 
     std::string buffer;
     bool multiline = false;
@@ -416,7 +393,18 @@ static void run_repl(LumaVM* vm) {
             }
 
             if (line == ":fns") {
-                std::cout << bold("Functions...\n\n");
+                std::cout << bold("Registered functions:\n");
+                if (registered_functions.empty()) {
+                    std::cout << dim("  (none)\n");
+                }
+                else {
+                    auto names = registered_functions;
+                    std::sort(names.begin(), names.end());
+                    for (const auto& name : names) {
+                        std::cout << "  " << cyan(name) << '\n';
+                    }
+                }
+                std::cout << '\n';
                 continue;
             }
 
@@ -444,7 +432,8 @@ static void print_help(std::string_view progname) {
         << progname << "               start REPL\n"
         << progname << " <file>        run script\n"
         << progname << " -e <code>     execute code\n"
-        << progname << " --help        show help\n\n";
+        << progname << " --help        show help\n"
+        << progname << " --t           test if Luma is working correclty\n\n";
 }
 
 int main(int argc, char* argv[]) {
@@ -471,6 +460,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         luma_destroy(vm);
+        return 0;
+    }
+
+    if (args.size() >= 2 && args[1] == "-t") {
+        std::cout << "Hello from LUMA!" << std::endl;
         return 0;
     }
 
