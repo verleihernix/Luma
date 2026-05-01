@@ -111,8 +111,21 @@ luma_register_function(vm, "add", [](LumaVM*, std::span<LumaValue> args) {
 });
 
 luma_run(vm, "print(add(2, 3))");
+```
+Using a macro:
+```cpp
+#include "luma.h"
 
-luma_destroy(vm);
+LumaVM* vm = luma_create();
+
+#define REG_FN(name, impl) \
+        luma_register_function(vm, name, impl);
+
+REG_FN("add", [](LumaVM*, std::span<LumaValue> args) {
+    return LumaValue(args[0].as_number() + args[1].as_number());
+})
+
+luma_run(vm);
 ```
 
 ---
