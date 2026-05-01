@@ -74,17 +74,25 @@ cmake --build .
 ## Example Code (Luma)
 
 ```lua
-print("Hello from Luma!")
+fn sub(a, b) {
+    return a - b
+}
+fn add(a, b) => a + b
+
+println("Hello from Luma!")
+
+println("10 + 5:", add(10, 5))
+println("10 - 5:", sub(10, 5))
 
 let x = 10
 let y = 20
 
-print(x + y)
+println(x + y)
 
 let list = [1, 2, 3]
 push(list, 4)
 
-print(len(list))
+println(len(list))
 ```
 
 ---
