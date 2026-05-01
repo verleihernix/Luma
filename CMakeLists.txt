@@ -22,5 +22,5 @@ target_compile_options(luma_core PRIVATE
 )
 
 # ── Example host ──
-add_executable(luma examples/main.cpp)
+add_executable(luma demo/main.cpp)
 target_link_libraries(luma PRIVATE luma_core)
