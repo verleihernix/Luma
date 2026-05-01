@@ -24,7 +24,7 @@
 ```
 include/        # Public API (luma.h)
 src/            # VM, parser, interpreter, lexer
-examples/       # REPL and demo application
+demo/       # REPL and demo application
 CMakeLists.txt  # Build system
 ```
 
