@@ -69,14 +69,6 @@ cmake --build .
 ```bash
 ./luma -e "print(1 + 2)"
 ```
-### Execute code inside the console
-```bash
-luma
-```
-```lua
-print("Hello from the Console")
-```
-
 ---
 
 ## Example Code (Luma)
