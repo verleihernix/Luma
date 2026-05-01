@@ -144,6 +144,21 @@ static void register_stdlib(LumaVM* vm) {
             throw luma_error("tonumber", "number or numeric string", args[0].to_string());
         });
 
+    REG_FN("typeof", [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+            expect_args(args, 1, "typeof");
+            auto& v = args[0];
+            std::string type;
+            if (v.is_null())     type = "null";
+            else if (v.is_bool())   type = "bool";
+            else if (v.is_number()) type = "number";
+            else if (v.is_string()) type = "string";
+            else if (v.is_list())   type = "list";
+            else if (v.is_map())    type = "map";
+            else if (v.is_function()) type = "function";
+            else type = "unknown";
+            return LumaValue(std::string(type));
+        });
+
     REG_FN("len",
         [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
             expect_args(args, 1, "len");
