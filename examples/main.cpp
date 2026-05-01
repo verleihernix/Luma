@@ -13,6 +13,8 @@
 #include <csignal>
 #include <cmath>
 #include <ctime>
+#include <thread>
+#include <chrono>
 
 static bool use_color = true;
 
@@ -210,6 +212,18 @@ static void register_stdlib(LumaVM* vm) {
     luma_register_function(vm, "str_ends", [](LumaVM*, std::span<LumaValue> a) -> LumaValue {
         return LumaValue(a[0].as_string().ends_with(a[1].as_string()));
         });
+
+    luma_register_function(vm, "wait", [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+        if (args.empty() || !args[0].is_number())
+            throw std::runtime_error("wait(ms) expects a number");
+
+        auto ms = static_cast<int>(args[0].as_number());
+        if (ms < 0)
+            ms = 0;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        return {};
+        });
 }
 
 static void print_error(std::string_view err) {
@@ -293,7 +307,7 @@ static void run_repl(LumaVM* vm) {
                     "len","push","pop","keys","has","assert","error","input",
                     "math_floor","math_ceil","math_round","math_abs","math_sqrt",
                     "math_pow","math_sin","math_cos","math_min","math_max","math_rand",
-                    "str_upper","str_lower","str_sub","str_contains","str_starts","str_ends"
+                    "str_upper","str_lower","str_sub","str_contains","str_starts","str_ends", "wait"
                 };
 
                 for (size_t i = 0; i < fns.size(); ++i) {
