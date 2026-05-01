@@ -71,7 +71,7 @@ cmake --build .
 ```
 ---
 
-## Example Code (Luma)
+## Example Code using the Demo
 
 ```lua
 fn sub(a, b) {
