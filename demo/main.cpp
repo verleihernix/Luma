@@ -408,6 +408,29 @@ static void run_repl(LumaVM* vm) {
                 continue;
             }
 
+            if (line == ":clear") {
+                luma_destroy(vm);
+                vm = luma_create();
+                register_stdlib(vm);
+                std::cout << green("State cleared.\n");
+                continue;
+            }
+            if (line.rfind(":load ", 0) == 0) { // starts with ":load "
+                std::string filename = line.substr(6);
+                // trim whitespace
+                filename.erase(0, filename.find_first_not_of(" \t"));
+                filename.erase(filename.find_last_not_of(" \t") + 1);
+                if (filename.empty()) {
+                    std::cerr << red("Error: no filename provided for :load\n");
+                }
+                else {
+                    if (!luma_run_file(vm, filename.c_str())) {
+                        print_error(luma_last_error(vm));
+                    }
+                }
+                continue;
+            }
+
             if (line.empty()) continue;
         }
 
@@ -463,8 +486,9 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    if (args.size() >= 2 && args[1] == "-t") {
+    if (!args.empty() && args[0] == "-t") {
         std::cout << "Hello from LUMA!" << std::endl;
+        luma_destroy(vm);
         return 0;
     }
 
