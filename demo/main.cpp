@@ -404,6 +404,21 @@ static void register_stdlib(LumaVM* vm) {
 
             return LumaValue(list);
         });
+
+    REG_FN("remove",
+        [](LumaVM*, std::span<LumaValue> args) -> LumaValue {
+            expect_args(args, 2, "remove");
+
+            LumaList& list = expect_list(args[0], "remove");
+            const int index = (int)expect_number(args[1], "remove");
+
+            if (index < 0 || static_cast<size_t>(index) >= list.size())
+                throw std::runtime_error("index out of range");
+
+            list.erase(list.begin() + index);
+
+            return {};
+        });
 #undef REG_FN
 }
 
